@@ -76,38 +76,42 @@ function Index() {
   });
 
   const mutation = useMutation({
-    mutationFn: (payload: ClassifyPayload) => classify({ data: payload }),
+    mutationFn: (payload: ClassifyPayload) => {
+      console.log("[EcoSort] analysis started:", {
+        itemName: payload.itemName || "(from image)",
+        hasImage: !!payload.imageDataUrl,
+        imageFileName: payload.imageFileName ?? null,
+      });
+      return classify({ data: payload });
+    },
     onSuccess: (data) => {
-      console.log("[EcoSort] classification stored in query cache:", data.itemName, data.category);
-      // Persisted in the QueryClient cache so the result survives any route
-      // re-render/remount — it only disappears when the user clears it.
-      queryClient.setQueryData(["last-result"], data);
+      console.log("[EcoSort] API response received:", data);
+      // Stored outside React (module store + sessionStorage) so a route
+      // remount after the POST can never blank the card. Empty/invalid
+      // responses are ignored by the store, keeping the old result visible.
+      saveResult(data as ClassificationResult);
       queryClient.invalidateQueries({ queryKey: ["sustainability-stats"] });
+    },
+    onError: (error) => {
+      console.error("[EcoSort] analysis failed — previous result kept:", error);
     },
   });
 
-  // Result lives in the QueryClient cache (not useState or mutation state) —
-  // a POST server function can invalidate the router and remount this route,
-  // which would wipe local state. The cache survives that.
-  const lastResult = useQuery<ClassificationResult | null>({
-    queryKey: ["last-result"],
-    queryFn: () => null, // never fetched — seeded via setQueryData after analysis
-    enabled: false,
-    staleTime: Infinity,
-  });
-  const result: ClassificationResult | null = mutation.data ?? lastResult.data ?? null;
+  // Persistent result: survives re-renders, remounts and reloads.
+  const result = useLastResult();
 
   const clearResult = () => {
-    console.log("[EcoSort] result cleared by user");
-    queryClient.setQueryData(["last-result"], null);
+    clearStoredResult();
     mutation.reset();
   };
 
   useEffect(() => {
-    if (result && resultRef.current) {
-      resultRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (result) {
+      console.log("[EcoSort] result rendered:", result.itemName, "→", result.category);
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [result]);
+
 
 
   return (
