@@ -161,7 +161,8 @@ export function ClassifyForm({
             />
           </label>
           <button
-            type="submit"
+            type="button"
+            onClick={runSubmit}
             disabled={busy}
             className="flex items-center justify-center gap-2 rounded-xl bg-brand px-6 py-3 font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
           >
