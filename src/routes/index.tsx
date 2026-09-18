@@ -32,17 +32,6 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const SAMPLE_RESULT: ClassificationResult = {
-  itemName: "Plastic Water Bottle",
-  category: "Recyclable Waste",
-  confidence: 96,
-  material: "PET plastic",
-  reason: "PET plastic can be processed and reused.",
-  disposalMethod: "Rinse, then place in the recyclable waste bin.",
-  environmentalImpact: "Reduces landfill accumulation.",
-  tips: ["Rinse before recycling to keep the batch clean."],
-  estimatedWeightKg: 0.02,
-};
 
 const EDUCATION = [
   {
