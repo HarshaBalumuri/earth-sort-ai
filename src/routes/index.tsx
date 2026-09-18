@@ -5,11 +5,13 @@ import { useEffect, useRef } from "react";
 
 import { ClassifyForm, type ClassifyPayload } from "@/components/ecosort/ClassifyForm";
 import { ResultCard } from "@/components/ecosort/ResultCard";
+import { clearStoredResult, saveResult, useLastResult } from "@/lib/result-store";
 import {
   classifyItem,
   getSustainabilityStats,
   type ClassificationResult,
 } from "@/lib/ecosort.functions";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
