@@ -2,8 +2,13 @@ import { useRef, useState } from "react";
 
 export type ClassifyPayload = { itemName: string; imageDataUrl: string | null };
 
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+// Hard ceiling on the original file we are willing to read into memory.
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
+// Photos are downscaled before upload: a 4000px phone photo becomes ~150KB,
+// which keeps the analyze request small and fast (large payloads were failing).
+const MAX_EDGE = 1024;
+const JPEG_QUALITY = 0.82;
 
 const EXAMPLES = [
   "Plastic Water Bottle",
@@ -15,6 +20,49 @@ const EXAMPLES = [
   "Old Phone Charger",
 ];
 
+function readAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read that file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("That file is not a readable image."));
+    img.src = src;
+  });
+}
+
+/** Downscale to a small JPEG data URL; falls back to the original on any failure. */
+async function compressImage(file: File): Promise<string> {
+  const original = await readAsDataUrl(file);
+  try {
+    const img = await loadImage(original);
+    const scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+    const width = Math.max(1, Math.round(img.width * scale));
+    const height = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return original;
+    ctx.drawImage(img, 0, 0, width, height);
+    const out = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+    console.log(
+      `[EcoSort] image prepared: ${Math.round(file.size / 1024)}KB → ${Math.round(out.length / 1024)}KB (${width}x${height})`,
+    );
+    return out.startsWith("data:image/") ? out : original;
+  } catch (error) {
+    console.warn("[EcoSort] image compression failed, sending original", error);
+    return original;
+  }
+}
+
 export function ClassifyForm({
   onSubmit,
   pending,
@@ -25,28 +73,35 @@ export function ClassifyForm({
   const [itemName, setItemName] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = (file: File | undefined) => {
+  const handleFile = async (file: File | undefined) => {
     setLocalError(null);
     if (!file) return;
-    if (!ALLOWED_TYPES.includes(file.type.toLowerCase())) {
+    const type = file.type.toLowerCase();
+    const nameOk = /\.(jpe?g|png)$/i.test(file.name);
+    if (!ALLOWED_TYPES.includes(type) && !nameOk) {
       setLocalError("Please choose a JPG, JPEG or PNG image.");
       return;
     }
-    if (file.size > MAX_IMAGE_BYTES) {
-      setLocalError("Image is too large — please use one under 4 MB.");
+    if (file.size > MAX_FILE_BYTES) {
+      setLocalError("That image is very large — please use one under 25 MB.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result);
+    setPreparing(true);
+    try {
+      const dataUrl = await compressImage(file);
       setImageDataUrl(dataUrl);
       setImageName(file.name);
       onSubmit({ itemName: itemName.trim(), imageDataUrl: dataUrl });
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("[EcoSort] could not prepare image", error);
+      setLocalError(error instanceof Error ? error.message : "Could not read that image.");
+    } finally {
+      setPreparing(false);
+    }
   };
 
   const clearImage = () => {
@@ -55,8 +110,11 @@ export function ClassifyForm({
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  const busy = pending || preparing;
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     if (!itemName.trim() && !imageDataUrl) {
       setLocalError("Type an item name or add a photo first.");
       return;
@@ -66,7 +124,7 @@ export function ClassifyForm({
   };
 
   const runExample = (example: string) => {
-    if (pending) return;
+    if (busy) return;
     setLocalError(null);
     setItemName(example);
     clearImage();
@@ -86,24 +144,24 @@ export function ClassifyForm({
             maxLength={120}
           />
           <label className="cursor-pointer rounded-xl border border-border bg-muted px-4 py-3 text-center text-sm text-foreground/80 transition-colors hover:border-brand/50">
-            {imageName ? "Change image" : "+ Image"}
+            {preparing ? "Preparing…" : imageName ? "Change image" : "+ Image"}
             <input
               ref={fileRef}
               type="file"
               accept="image/jpeg,image/jpg,image/png,.jpg,.jpeg,.png"
               className="sr-only"
-              onChange={(e) => handleFile(e.target.files?.[0])}
+              onChange={(e) => void handleFile(e.target.files?.[0])}
             />
           </label>
           <button
             type="submit"
-            disabled={pending}
+            disabled={busy}
             className="flex items-center justify-center gap-2 rounded-xl bg-brand px-6 py-3 font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
           >
-            {pending && (
+            {busy && (
               <span className="size-4 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground" />
             )}
-            {pending ? "Analyzing…" : "Analyze"}
+            {preparing ? "Preparing…" : pending ? "Analyzing…" : "Analyze"}
           </button>
         </div>
 
@@ -127,7 +185,7 @@ export function ClassifyForm({
             key={example}
             type="button"
             onClick={() => runExample(example)}
-            disabled={pending}
+            disabled={busy}
             className="rounded-full border border-border bg-muted px-3 py-1.5 text-xs text-foreground/80 transition-colors hover:border-brand/60 hover:text-brand disabled:opacity-50"
           >
             {example}

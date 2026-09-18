@@ -21,7 +21,13 @@ export function ResultCard({ result }: { result: ClassificationResult }) {
         <span className="text-xs uppercase tracking-widest text-muted-foreground">AI verdict</span>
         <span className="text-xs font-bold text-brand">{result.confidence}% confidence</span>
       </div>
+      {result.source === "fallback" && (
+        <p className="mt-3 rounded-xl border border-hazardous/40 bg-hazardous/10 px-3 py-2 text-xs text-hazardous">
+          The AI service was unreachable — this is EcoSort's offline rule-based estimate. Please double-check locally.
+        </p>
+      )}
       <h2 className="font-display mt-4 text-3xl md:text-4xl">{result.itemName}</h2>
+
 
       <div className="mt-5 flex flex-wrap gap-2">
         <span
