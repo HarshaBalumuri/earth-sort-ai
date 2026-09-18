@@ -32,17 +32,6 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const SAMPLE_RESULT: ClassificationResult = {
-  itemName: "Plastic Water Bottle",
-  category: "Recyclable Waste",
-  confidence: 96,
-  material: "PET plastic",
-  reason: "PET plastic can be processed and reused.",
-  disposalMethod: "Rinse, then place in the recyclable waste bin.",
-  environmentalImpact: "Reduces landfill accumulation.",
-  tips: ["Rinse before recycling to keep the batch clean."],
-  estimatedWeightKg: 0.02,
-};
 
 const EDUCATION = [
   {
@@ -99,7 +88,6 @@ function Index() {
     }
   }, [result]);
 
-  const shown = result ?? SAMPLE_RESULT;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -163,12 +151,21 @@ function Index() {
         className="relative z-10 mx-auto grid max-w-6xl gap-6 px-6 pb-14 md:grid-cols-5 md:px-12"
       >
         <div className="md:col-span-3">
-          {!result && (
-            <p className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">
-              Sample result — analyze an item to see yours
-            </p>
+          {mutation.isPending ? (
+            <div className="glass flex min-h-[280px] flex-col items-center justify-center gap-4 rounded-3xl p-8 text-center">
+              <span className="size-10 animate-spin rounded-full border-2 border-brand/30 border-t-brand" />
+              <p className="text-sm text-muted-foreground">Analyzing your item…</p>
+            </div>
+          ) : result ? (
+            <ResultCard key={result.itemName + result.confidence} result={result} />
+          ) : (
+            <div className="glass flex min-h-[280px] flex-col items-center justify-center gap-2 rounded-3xl p-8 text-center">
+              <p className="font-display text-3xl text-brand">No result yet</p>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                Type an item, tap an example, or add a photo — your classification will appear here.
+              </p>
+            </div>
           )}
-          <ResultCard key={shown.itemName + shown.confidence} result={shown} />
         </div>
         <div className="grid gap-4 md:col-span-2">
           <StatCard
