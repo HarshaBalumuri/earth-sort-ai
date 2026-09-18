@@ -165,7 +165,16 @@ function Index() {
               <p className="text-sm text-muted-foreground">Analyzing your item…</p>
             </div>
           ) : result ? (
-            <ResultCard key={result.itemName + result.confidence} result={result} />
+            <div>
+              <ResultCard key={result.itemName + result.confidence} result={result} />
+              <button
+                type="button"
+                onClick={clearResult}
+                className="mt-3 rounded-full border border-border bg-muted px-4 py-1.5 text-xs text-foreground/70 transition-colors hover:border-brand/60 hover:text-brand"
+              >
+                Clear result
+              </button>
+            </div>
           ) : (
             <div className="glass flex min-h-[280px] flex-col items-center justify-center gap-2 rounded-3xl p-8 text-center">
               <p className="font-display text-3xl text-brand">No result yet</p>
