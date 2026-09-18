@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { ClassifyForm, type ClassifyPayload } from "@/components/ecosort/ClassifyForm";
 import { ResultCard } from "@/components/ecosort/ResultCard";
