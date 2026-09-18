@@ -32,10 +32,13 @@ const ClassifyInput = z
   .object({
     itemName: z.string().trim().max(120).default(""),
     imageDataUrl: z.string().startsWith("data:image/").max(8_000_000).nullable().default(null),
+    /** Used only by the offline fallback to guess from the file name. */
+    imageFileName: z.string().trim().max(200).nullable().optional().default(null),
   })
   .refine((v) => v.itemName.length > 0 || !!v.imageDataUrl, {
     message: "Provide an item name or an image.",
   });
+
 
 /** Rule-based backup so the app still answers when the AI service is unavailable. */
 const FALLBACK_RULES: Array<{
