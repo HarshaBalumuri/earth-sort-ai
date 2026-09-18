@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.get_sustainability_stats() FROM anon, authenticated, PUBLIC;
