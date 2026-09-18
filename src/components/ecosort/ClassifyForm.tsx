@@ -85,6 +85,7 @@ export function ClassifyForm({
   const handleFile = async (file: File | undefined) => {
     setLocalError(null);
     if (!file) return;
+    console.log("[EcoSort] image uploaded:", file.name, file.type, `${Math.round(file.size / 1024)}KB`);
     const type = file.type.toLowerCase();
     const nameOk = /\.(jpe?g|png)$/i.test(file.name);
     if (!ALLOWED_TYPES.includes(type) && !nameOk) {
@@ -100,7 +101,7 @@ export function ClassifyForm({
       const dataUrl = await compressImage(file);
       setImageDataUrl(dataUrl);
       setImageName(file.name);
-      onSubmit({ itemName: itemName.trim(), imageDataUrl: dataUrl });
+      onSubmit({ itemName: itemName.trim(), imageDataUrl: dataUrl, imageFileName: file.name });
     } catch (error) {
       console.error("[EcoSort] could not prepare image", error);
       setLocalError(error instanceof Error ? error.message : "Could not read that image.");
@@ -108,6 +109,7 @@ export function ClassifyForm({
       setPreparing(false);
     }
   };
+
 
   const clearImage = () => {
     setImageDataUrl(null);
