@@ -1,6 +1,11 @@
 import { useRef, useState } from "react";
 
-export type ClassifyPayload = { itemName: string; imageDataUrl: string | null };
+export type ClassifyPayload = {
+  itemName: string;
+  imageDataUrl: string | null;
+  imageFileName?: string | null;
+};
+
 
 // Hard ceiling on the original file we are willing to read into memory.
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -80,6 +85,7 @@ export function ClassifyForm({
   const handleFile = async (file: File | undefined) => {
     setLocalError(null);
     if (!file) return;
+    console.log("[EcoSort] image uploaded:", file.name, file.type, `${Math.round(file.size / 1024)}KB`);
     const type = file.type.toLowerCase();
     const nameOk = /\.(jpe?g|png)$/i.test(file.name);
     if (!ALLOWED_TYPES.includes(type) && !nameOk) {
@@ -95,7 +101,7 @@ export function ClassifyForm({
       const dataUrl = await compressImage(file);
       setImageDataUrl(dataUrl);
       setImageName(file.name);
-      onSubmit({ itemName: itemName.trim(), imageDataUrl: dataUrl });
+      onSubmit({ itemName: itemName.trim(), imageDataUrl: dataUrl, imageFileName: file.name });
     } catch (error) {
       console.error("[EcoSort] could not prepare image", error);
       setLocalError(error instanceof Error ? error.message : "Could not read that image.");
@@ -103,6 +109,7 @@ export function ClassifyForm({
       setPreparing(false);
     }
   };
+
 
   const clearImage = () => {
     setImageDataUrl(null);
@@ -120,7 +127,7 @@ export function ClassifyForm({
     }
     setLocalError(null);
     console.log("[EcoSort] analyze triggered — form will not reload the page");
-    onSubmit({ itemName: itemName.trim(), imageDataUrl });
+    onSubmit({ itemName: itemName.trim(), imageDataUrl, imageFileName: imageName });
   };
 
   // The form never actually submits: preventDefault on every submit path,

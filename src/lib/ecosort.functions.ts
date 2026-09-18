@@ -32,10 +32,13 @@ const ClassifyInput = z
   .object({
     itemName: z.string().trim().max(120).default(""),
     imageDataUrl: z.string().startsWith("data:image/").max(8_000_000).nullable().default(null),
+    /** Used only by the offline fallback to guess from the file name. */
+    imageFileName: z.string().trim().max(200).nullable().optional().default(null),
   })
   .refine((v) => v.itemName.length > 0 || !!v.imageDataUrl, {
     message: "Provide an item name or an image.",
   });
+
 
 /** Rule-based backup so the app still answers when the AI service is unavailable. */
 const FALLBACK_RULES: Array<{
@@ -73,11 +76,23 @@ const CATEGORY_GUIDANCE: Record<WasteCategory, { disposal: string; impact: strin
   },
 };
 
-function fallbackClassification(itemName: string, hasImage: boolean): ClassificationResult {
-  const label = itemName.trim() || (hasImage ? "Uploaded Item" : "Unknown Item");
+function fallbackClassification(
+  itemName: string,
+  hasImage: boolean,
+  imageFileName?: string | null,
+): ClassificationResult {
+  // Prefer the typed name; otherwise guess from the image file name
+  // ("glass-jar.jpg" → "Glass Jar"), which is often descriptive enough.
+  const fromFile = (imageFileName ?? "")
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/[_\-.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const label = itemName.trim() || fromFile || (hasImage ? "Uploaded Item" : "Unknown Item");
   const rule = FALLBACK_RULES.find((r) => r.match.test(label));
   const category: WasteCategory = rule?.category ?? "Dry Waste";
   const guidance = CATEGORY_GUIDANCE[category];
+
   return {
     itemName: label,
     category,
