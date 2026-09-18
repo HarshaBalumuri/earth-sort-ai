@@ -1,6 +1,11 @@
 import { useRef, useState } from "react";
 
-export type ClassifyPayload = { itemName: string; imageDataUrl: string | null };
+export type ClassifyPayload = {
+  itemName: string;
+  imageDataUrl: string | null;
+  imageFileName?: string | null;
+};
+
 
 // Hard ceiling on the original file we are willing to read into memory.
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
