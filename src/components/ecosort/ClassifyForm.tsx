@@ -112,15 +112,22 @@ export function ClassifyForm({
 
   const busy = pending || preparing;
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const runSubmit = () => {
     if (busy) return;
     if (!itemName.trim() && !imageDataUrl) {
       setLocalError("Type an item name or add a photo first.");
       return;
     }
     setLocalError(null);
+    console.log("[EcoSort] analyze triggered — form will not reload the page");
     onSubmit({ itemName: itemName.trim(), imageDataUrl });
+  };
+
+  // The form never actually submits: preventDefault on every submit path,
+  // and the Analyze button is type="button" (click handler, not form submit).
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    runSubmit();
   };
 
   const runExample = (example: string) => {
