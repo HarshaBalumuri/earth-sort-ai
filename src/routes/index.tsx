@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { ClassifyForm, type ClassifyPayload } from "@/components/ecosort/ClassifyForm";
 import { ResultCard } from "@/components/ecosort/ResultCard";
@@ -66,7 +66,6 @@ function Index() {
   const queryClient = useQueryClient();
   const classify = useServerFn(classifyItem);
   const fetchStats = useServerFn(getSustainabilityStats);
-  const [result, setResult] = useState<ClassificationResult | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const stats = useQuery({
@@ -77,10 +76,19 @@ function Index() {
   const mutation = useMutation({
     mutationFn: (payload: ClassifyPayload) => classify({ data: payload }),
     onSuccess: (data) => {
-      setResult(data);
+      console.log("[EcoSort] classification stored in mutation cache:", data.itemName, data.category);
       queryClient.invalidateQueries({ queryKey: ["sustainability-stats"] });
     },
   });
+
+  // Result lives in the mutation cache, not useState — a POST server function
+  // invalidates the router and remounts this route, which would wipe local state.
+  const result: ClassificationResult | null = mutation.data ?? null;
+
+  const clearResult = () => {
+    console.log("[EcoSort] result cleared by user");
+    mutation.reset();
+  };
 
   useEffect(() => {
     if (result && resultRef.current) {
@@ -157,7 +165,16 @@ function Index() {
               <p className="text-sm text-muted-foreground">Analyzing your item…</p>
             </div>
           ) : result ? (
-            <ResultCard key={result.itemName + result.confidence} result={result} />
+            <div>
+              <ResultCard key={result.itemName + result.confidence} result={result} />
+              <button
+                type="button"
+                onClick={clearResult}
+                className="mt-3 rounded-full border border-border bg-muted px-4 py-1.5 text-xs text-foreground/70 transition-colors hover:border-brand/60 hover:text-brand"
+              >
+                Clear result
+              </button>
+            </div>
           ) : (
             <div className="glass flex min-h-[280px] flex-col items-center justify-center gap-2 rounded-3xl p-8 text-center">
               <p className="font-display text-3xl text-brand">No result yet</p>
