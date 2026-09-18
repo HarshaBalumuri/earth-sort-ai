@@ -76,17 +76,28 @@ function Index() {
   const mutation = useMutation({
     mutationFn: (payload: ClassifyPayload) => classify({ data: payload }),
     onSuccess: (data) => {
-      console.log("[EcoSort] classification stored in mutation cache:", data.itemName, data.category);
+      console.log("[EcoSort] classification stored in query cache:", data.itemName, data.category);
+      // Persisted in the QueryClient cache so the result survives any route
+      // re-render/remount — it only disappears when the user clears it.
+      queryClient.setQueryData(["last-result"], data);
       queryClient.invalidateQueries({ queryKey: ["sustainability-stats"] });
     },
   });
 
-  // Result lives in the mutation cache, not useState — a POST server function
-  // invalidates the router and remounts this route, which would wipe local state.
-  const result: ClassificationResult | null = mutation.data ?? null;
+  // Result lives in the QueryClient cache (not useState or mutation state) —
+  // a POST server function can invalidate the router and remount this route,
+  // which would wipe local state. The cache survives that.
+  const lastResult = useQuery<ClassificationResult | null>({
+    queryKey: ["last-result"],
+    queryFn: () => null, // never fetched — seeded via setQueryData after analysis
+    enabled: false,
+    staleTime: Infinity,
+  });
+  const result: ClassificationResult | null = mutation.data ?? lastResult.data ?? null;
 
   const clearResult = () => {
     console.log("[EcoSort] result cleared by user");
+    queryClient.setQueryData(["last-result"], null);
     mutation.reset();
   };
 
