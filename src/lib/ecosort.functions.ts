@@ -103,71 +103,97 @@ export const classifyItem = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ClassifyInput.parse(input))
   .handler(async ({ data }) => {
     const key = process.env["LOVABLE_API_KEY"];
-    if (!key) throw new Error("AI is not configured yet. Please try again shortly.");
 
-    const runIdFetch = createLovableAiGatewayRunIdFetch();
-    const lovable = createOpenAI({
-      baseURL: "https://ai.gateway.lovable.dev/v1",
-      apiKey: key,
-      headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-      fetch: runIdFetch.fetch,
-    });
+    const mediaType = data.imageDataUrl
+      ? (data.imageDataUrl.match(/^data:(image\/[a-z.+-]+);/i)?.[1] ?? "image/jpeg")
+      : null;
 
-    const userText = data.itemName
-      ? `Item: ${data.itemName}`
-      : "Identify the item in this photo and classify it.";
+    let normalized: ClassificationResult;
 
-    const content: Array<
-      { type: "text"; text: string } | { type: "image"; image: string }
-    > = [{ type: "text", text: userText }];
-    if (data.imageDataUrl) content.push({ type: "image", image: data.imageDataUrl });
-
-    let output: ClassificationResult;
-    try {
-      const result = streamText({
-        model: lovable.responses("openai/gpt-6-astra"),
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content }],
-        output: Output.object({ schema: ResultSchema }),
-        providerOptions: {
-          openai: {
-            forceReasoning: true,
-            reasoningEffort: "low",
-            reasoningSummary: "auto",
-            store: false,
-            include: ["reasoning.encrypted_content"],
-          },
-        },
+    if (!key) {
+      console.error("[EcoSort] LOVABLE_API_KEY missing — using offline fallback classification");
+      normalized = fallbackClassification(data.itemName, !!data.imageDataUrl);
+    } else {
+      const runIdFetch = createLovableAiGatewayRunIdFetch();
+      const lovable = createOpenAI({
+        baseURL: "https://ai.gateway.lovable.dev/v1",
+        apiKey: key,
+        headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+        fetch: runIdFetch.fetch,
       });
-      output = await result.output;
-    } catch (error) {
-      if (NoObjectGeneratedError.isInstance(error)) {
-        throw new Error("The AI could not produce a classification. Please try rephrasing the item.");
+
+      const userText = data.itemName
+        ? `Item: ${data.itemName}`
+        : "Identify the item in this photo and classify it.";
+
+      const content: Array<
+        { type: "text"; text: string } | { type: "file"; data: string; mediaType: string }
+      > = [{ type: "text", text: userText }];
+      if (data.imageDataUrl && mediaType) {
+        content.push({ type: "file", data: data.imageDataUrl, mediaType });
       }
-      const message = error instanceof Error ? error.message : String(error);
-      if (/402/.test(message)) throw new Error("AI credits are exhausted. Please add credits to continue.");
-      if (/429/.test(message)) throw new Error("Too many requests right now. Please wait a moment and retry.");
-      throw new Error(`Classification failed: ${message}`);
+
+      try {
+        const result = streamText({
+          model: lovable.responses("openai/gpt-6-astra"),
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content }],
+          output: Output.object({ schema: ResultSchema }),
+          providerOptions: {
+            openai: {
+              forceReasoning: true,
+              reasoningEffort: "low",
+              reasoningSummary: "auto",
+              store: false,
+              include: ["reasoning.encrypted_content"],
+            },
+          },
+        });
+        const output = await result.output;
+        normalized = {
+          ...output,
+          confidence: Math.max(0, Math.min(100, Math.round(output.confidence))),
+          tips: output.tips.slice(0, 3),
+          estimatedWeightKg: Math.max(0, Math.min(50, output.estimatedWeightKg)),
+          source: "ai",
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[EcoSort] AI classification failed:", message, {
+          hasImage: !!data.imageDataUrl,
+          mediaType,
+          imageChars: data.imageDataUrl?.length ?? 0,
+          noObject: NoObjectGeneratedError.isInstance(error),
+        });
+        // Terminal billing/policy errors are surfaced; everything else degrades
+        // to the offline rules so the user still gets an answer.
+        if (/\b402\b/.test(message)) {
+          throw new Error("AI credits are exhausted — please add credits to continue.");
+        }
+        if (/\b403\b/.test(message)) {
+          throw new Error("AI access is blocked for this workspace. Check the workspace AI settings.");
+        }
+        normalized = fallbackClassification(data.itemName, !!data.imageDataUrl);
+      }
     }
 
-    const normalized: ClassificationResult = {
-      ...output,
-      confidence: Math.max(0, Math.min(100, Math.round(output.confidence))),
-      tips: output.tips.slice(0, 3),
-      estimatedWeightKg: Math.max(0, Math.min(50, output.estimatedWeightKg)),
-    };
-
     // Anonymous aggregate log for the dashboard — no personal data.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("classifications").insert({
-      item_name: normalized.itemName.slice(0, 120),
-      category: normalized.category,
-      confidence: normalized.confidence,
-      estimated_weight_kg: normalized.estimatedWeightKg,
-      used_image: !!data.imageDataUrl,
-    });
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error } = await supabaseAdmin.from("classifications").insert({
+        item_name: normalized.itemName.slice(0, 120),
+        category: normalized.category,
+        confidence: normalized.confidence,
+        estimated_weight_kg: normalized.estimatedWeightKg,
+        used_image: !!data.imageDataUrl,
+      });
+      if (error) console.error("[EcoSort] dashboard log insert failed:", error.message);
+    } catch (error) {
+      console.error("[EcoSort] dashboard log insert threw:", error);
+    }
 
     return normalized;
+
   });
 
 export const getSustainabilityStats = createServerFn({ method: "GET" }).handler(async () => {
