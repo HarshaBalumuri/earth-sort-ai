@@ -14,13 +14,49 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      classifications: {
+        Row: {
+          category: string
+          confidence: number
+          created_at: string
+          estimated_weight_kg: number
+          id: string
+          item_name: string
+          used_image: boolean
+        }
+        Insert: {
+          category: string
+          confidence: number
+          created_at?: string
+          estimated_weight_kg?: number
+          id?: string
+          item_name: string
+          used_image?: boolean
+        }
+        Update: {
+          category?: string
+          confidence?: number
+          created_at?: string
+          estimated_weight_kg?: number
+          id?: string
+          item_name?: string
+          used_image?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_sustainability_stats: {
+        Args: never
+        Returns: {
+          diverted_kg: number
+          recyclable_items: number
+          total_items: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
