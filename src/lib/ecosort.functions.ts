@@ -23,16 +23,77 @@ const ResultSchema = z.object({
   tips: z.array(z.string()),
   estimatedWeightKg: z.number(),
 });
-export type ClassificationResult = z.infer<typeof ResultSchema>;
+export type ClassificationResult = z.infer<typeof ResultSchema> & {
+  /** "fallback" means the AI service was unreachable and a rule-based guess was used. */
+  source?: "ai" | "fallback";
+};
 
 const ClassifyInput = z
   .object({
     itemName: z.string().trim().max(120).default(""),
-    imageDataUrl: z.string().startsWith("data:image/").max(6_000_000).nullable().default(null),
+    imageDataUrl: z.string().startsWith("data:image/").max(8_000_000).nullable().default(null),
   })
   .refine((v) => v.itemName.length > 0 || !!v.imageDataUrl, {
     message: "Provide an item name or an image.",
   });
+
+/** Rule-based backup so the app still answers when the AI service is unavailable. */
+const FALLBACK_RULES: Array<{
+  match: RegExp;
+  category: WasteCategory;
+  material: string;
+  weight: number;
+}> = [
+  { match: /batter|bulb|cfl|paint|chemical|pesticid|syringe|medicine|aerosol|thermometer|e-?waste|charger|phone|laptop|cable/i, category: "Hazardous Waste", material: "Electronic or chemical", weight: 0.05 },
+  { match: /peel|banana|vegetable|fruit|food|leftover|tea ?bag|coffee ground|egg ?shell|garden|leaves|flower/i, category: "Wet Waste", material: "Organic matter", weight: 0.1 },
+  { match: /bottle|can|tin|glass|jar|carton|newspaper|paper|cardboard|box|magazine|aluminium|aluminum|metal|pet\b|hdpe/i, category: "Recyclable Waste", material: "Recyclable material", weight: 0.03 },
+  { match: /bag|wrapper|straw|styrofoam|thermocol|diaper|napkin|tissue|sanitary|ceramic|rubber|cloth|sponge/i, category: "Dry Waste", material: "Non-recyclable residual", weight: 0.02 },
+];
+
+const CATEGORY_GUIDANCE: Record<WasteCategory, { disposal: string; impact: string; tips: string[] }> = {
+  "Wet Waste": {
+    disposal: "Place it in the green wet-waste bin or a home compost pile.",
+    impact: "Composting organics keeps methane-producing waste out of landfills.",
+    tips: ["Keep wet waste free of plastic", "Drain excess liquid first"],
+  },
+  "Dry Waste": {
+    disposal: "Put it in the dry-waste bin; keep it clean, dry and loose.",
+    impact: "Correct sorting prevents contamination of recyclable batches.",
+    tips: ["Avoid bagging dry waste", "Choose reusable alternatives next time"],
+  },
+  "Recyclable Waste": {
+    disposal: "Rinse it and place it in the recyclable bin or hand it to a scrap collector.",
+    impact: "Recycling saves raw material and energy versus new production.",
+    tips: ["Rinse before recycling", "Flatten to save space"],
+  },
+  "Hazardous Waste": {
+    disposal: "Do not bin it — drop it at a hazardous-waste or e-waste collection point.",
+    impact: "Keeping toxins out of landfills protects soil and groundwater.",
+    tips: ["Never burn or bury it", "Store safely until drop-off"],
+  },
+};
+
+function fallbackClassification(itemName: string, hasImage: boolean): ClassificationResult {
+  const label = itemName.trim() || (hasImage ? "Uploaded Item" : "Unknown Item");
+  const rule = FALLBACK_RULES.find((r) => r.match.test(label));
+  const category: WasteCategory = rule?.category ?? "Dry Waste";
+  const guidance = CATEGORY_GUIDANCE[category];
+  return {
+    itemName: label,
+    category,
+    confidence: rule ? 55 : 30,
+    material: rule?.material ?? "Unclassified material",
+    reason: rule
+      ? `The AI service is unavailable, so this uses EcoSort's offline rules: items like this usually belong to ${category}.`
+      : "The AI service is unavailable and no offline rule matched, so this is a cautious default — please verify locally.",
+    disposalMethod: guidance.disposal,
+    environmentalImpact: guidance.impact,
+    tips: guidance.tips,
+    estimatedWeightKg: rule?.weight ?? 0.02,
+    source: "fallback",
+  };
+}
+
 
 const SYSTEM_PROMPT = `You are EcoSort AI, a waste segregation assistant supporting SDG 12 (Responsible Consumption and Production).
 Classify the everyday item the user describes or photographs into exactly one of: Wet Waste (biodegradable/organic), Dry Waste (non-biodegradable, non-recyclable or low-value residual), Recyclable Waste (paper, cardboard, PET/HDPE plastics, glass, metals, clean e-waste destined for recycling), Hazardous Waste (batteries, chemicals, paint, medical waste, CFL bulbs, e-waste with toxic components, aerosols).
