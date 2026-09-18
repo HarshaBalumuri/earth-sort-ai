@@ -127,7 +127,7 @@ export function ClassifyForm({
     }
     setLocalError(null);
     console.log("[EcoSort] analyze triggered — form will not reload the page");
-    onSubmit({ itemName: itemName.trim(), imageDataUrl });
+    onSubmit({ itemName: itemName.trim(), imageDataUrl, imageFileName: imageName });
   };
 
   // The form never actually submits: preventDefault on every submit path,
