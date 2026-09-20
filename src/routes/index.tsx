@@ -14,6 +14,7 @@ import {
 
 
 export const Route = createFileRoute("/")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "EcoSort AI – Smart Waste Segregation Assistant" },
