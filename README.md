@@ -1,138 +1,65 @@
-# EcoSort Assistant
+# EcoSort AI – Smart Waste Segregation Assistant
 
-Build a modern AI-powered web application called "EcoSort AI – Smart Waste Segregation Assistant".
+## Overview
 
-Purpose:
+EcoSort AI is an AI-powered waste segregation assistant developed as part of the 1M1B AI for Sustainability Virtual Internship.
 
-Help users identify the correct waste category and disposal method for everyday items to support sustainable waste management and SDG 12 (Responsible Consumption and Production).
+The application helps users identify the correct waste category for everyday items through text input or image upload and provides disposal recommendations, environmental impact information, and sustainability tips.
 
-Features:
+## Problem Statement
 
-1. Home Page
+Improper waste segregation leads to increased pollution, reduced recycling efficiency, and unnecessary landfill waste. Many people are unaware of the correct disposal methods for common household items.
 
-- Attractive sustainability-themed UI
+## Solution
 
-- Hero section with title:
+EcoSort AI uses AI-based classification to categorize waste into:
 
-  "EcoSort AI"
+- Recyclable Waste
+- Wet Waste
+- Dry Waste
+- Hazardous Waste
 
-- Subtitle:
+The system also provides:
+- Disposal guidance
+- Environmental impact information
+- Sustainability recommendations
+- Waste management awareness
 
-  "Upload an item image or enter an item name to learn how to dispose of it responsibly."
+## SDG Alignment
 
-2. Waste Classification
+**SDG 12 – Responsible Consumption and Production**
 
-- Text input for item name
+## Features
 
-- Image upload option
+- Text-based waste classification
+- Image-based waste analysis
+- Disposal recommendations
+- Sustainability tips
+- Dashboard statistics
+- Responsible AI considerations
 
-- AI analyzes the item and classifies it into:
+## Technology Stack
 
-  - Wet Waste
+- React
+- TypeScript
+- Tailwind CSS
+- TanStack Start
+- Supabase
+- AI-powered classification
 
-  - Dry Waste
+## Responsible AI
 
-  - Recyclable Waste
+- Transparent AI recommendations
+- No personal data collection
+- Sustainability-focused guidance
+- Ethical and responsible AI usage
 
-  - Hazardous Waste
+## Author
 
-3. AI Response Card
+**Harsha Balumuri**
 
-Display:
+Malla Reddy College of Engineering and Technology (MRCET)
 
-- Item Name
+## Internship
 
-- Waste Category
-
-- Confidence Score
-
-- Disposal Method
-
-- Environmental Impact
-
-- Sustainability Tips
-
-4. Sustainability Dashboard
-
-Show:
-
-- Total items checked
-
-- Recyclable items identified
-
-- Estimated waste diverted from landfills
-
-5. Educational Section
-
-Include:
-
-- Waste segregation tips
-
-- Recycling awareness content
-
-- SDG 12 information
-
-6. Responsible AI Section
-
-Display:
-
-- AI may occasionally make mistakes
-
-- Users should verify disposal rules with local authorities
-
-- No personal data is stored
-
-- Classification explanations are transparent
-
-7. Technology
-
-- Use OpenAI API integration
-
-- Responsive design
-
-- Modern cards and animations
-
-- Green sustainability color palette
-
-8. Sample Workflow
-
-Input:
-
-Plastic Water Bottle
-
-Output:
-
-Category: Recyclable Waste
-
-Reason: PET plastic can be processed and reused.
-
-Disposal Method: Place in recyclable waste bin.
-
-Environmental Impact: Reduces landfill accumulation.
-
-Tip: Rinse before recycling.
-
-Generate complete frontend, backend logic, database schema, and deployment-ready code.
-
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://earth-sort-ai.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/2f4b85e1-63f1-45b6-ae38-aed60fe61bfa).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+1M1B AI for Sustainability Virtual Internship 2026
