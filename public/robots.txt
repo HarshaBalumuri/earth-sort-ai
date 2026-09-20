@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://earth-sort-ai.lovable.app/sitemap.xml
+Sitemap:  https://earth-sort-ai.vercel.app/sitemap.xml
